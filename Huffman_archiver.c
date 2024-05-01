@@ -1,0 +1,234 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include "my_heap.c"
+
+#define TIME_FOR_SLEEP 1
+
+#define SEYCHAS_RVANYOOOOOT 9000000000000000000
+
+typedef struct codes_for_symbols {
+    char **codes;
+    int *codes_lengths;
+} codes_for_symbols;
+
+codes_for_symbols *coded_symbols;
+
+
+char key_initialiser[] = "kirindenle_CBO_ZOV_ZV_1488_SMARTPHONE_VIVO"; // 42 symbols
+
+char symbol_initialiser[] = "kirindenle_CBO_ZOV_ZV_69_SMARTPHONE_VIVO"; // 40 symbols
+
+char output_file_extension[] = ".GOOOOOOL"; // 9 symbols
+
+typedef union {
+    char *bytes;
+    int value;
+} number;
+
+void NewTreeNodeFromSymbol(TreeNode *initialisable, unsigned char symbol, long long int frequency, int index) {
+    initialisable->frequency = frequency;
+    if (frequency >= SEYCHAS_RVANYOOOOOT)
+        initialisable->frequency = SEYCHAS_RVANYOOOOOT;
+    initialisable->symbol = symbol;
+    initialisable->index = index;
+    initialisable->left = NULL;
+    initialisable->right = NULL;
+}
+
+void NewTreeNodeFromTwoTrees(TreeNode *initialisable, TreeNode *left, TreeNode *right) {
+    if (left->frequency + right->frequency >= SEYCHAS_RVANYOOOOOT)
+        initialisable->frequency = SEYCHAS_RVANYOOOOOT;
+    else
+        initialisable->frequency = left->frequency + right->frequency;
+    initialisable->left = left;
+    initialisable->right = right;
+}
+
+void my_memcpy(char *dst, char *src, int number_of_bits) {
+    for (int i = 0; i < number_of_bits; ++i) {
+        dst[i / 8] |= (src[i / 8] & (1 << (i % 8)));
+    }
+}
+
+void
+symbols_calculation(TreeNode *current_node, char *current_code, int current_code_index, int current_code_capacity) {
+    if (current_node->left != NULL) {
+        current_code[current_code_index / 8] |= (1 << (current_code_index % 8));
+        if (current_code_index / 8 + 1 > current_code_capacity) {
+            current_code_capacity *= 2;
+            current_code = realloc(current_code, sizeof(char) * current_code_capacity);
+        }
+        symbols_calculation(current_node->left, current_code, current_code_index + 1, current_code_capacity);
+    }
+    if (current_node->right != NULL) {
+        current_code[current_code_index / 8] &= (~(1 << (current_code_index % 8)));
+        if (current_code_index / 8 > current_code_capacity) {
+            current_code_capacity *= 2;
+            current_code = realloc(current_code, sizeof(char) * current_code_capacity);
+        }
+        symbols_calculation(current_node->right, current_code, current_code_index + 1, current_code_capacity);
+    }
+
+    coded_symbols->codes[current_node->symbol] = calloc(current_code_index,
+                                                        sizeof(char) * (current_code_index / 8 + 1));
+    my_memcpy(coded_symbols->codes[current_node->symbol], current_code, current_code_index);
+    coded_symbols->codes_lengths[current_node->symbol] = current_code_index;
+
+}
+
+TreeNode *build_Huffman_tree(long long int *frequencies, int unique_symbols_count) {
+    Heap *tree = calloc(256, sizeof(Heap));
+    tree->Nodes = calloc(unique_symbols_count, sizeof(TreeNode *));
+    tree->index = 0;
+    for (int i = 0; i <= 256; ++i) {
+        if (frequencies[i] != 0) {
+            tree->Nodes[tree->index] = malloc(sizeof(TreeNode));
+            NewTreeNodeFromSymbol(tree->Nodes[tree->index], (unsigned char) i, frequencies[i], i + 1);
+            tree->index++;
+        }
+    }
+    for (int i = tree->index / 2 - 1; i >= 0; --i) {
+        swapping(tree, i, tree->index);
+    }
+    for (int i = 0; i < unique_symbols_count - 1; ++i) {
+        TreeNode *left = tree->Nodes[0];
+        TreeNode *temp = tree->Nodes[tree->index - 1];
+        tree->Nodes[tree->index - 1] = tree->Nodes[0];
+        tree->Nodes[0] = temp;
+        tree->index--;
+        swapping(tree, 0, tree->index);
+        TreeNode *right = tree->Nodes[0];
+        if (tree->index != 0) {
+            temp = tree->Nodes[tree->index - 1];
+            tree->Nodes[tree->index - 1] = tree->Nodes[0];
+            tree->Nodes[0] = temp;
+            tree->index--;
+            swapping(tree, 0, tree->index);
+        } else {
+            int foo = 0;
+        }
+        TreeNode *new_TreeNode = calloc(1, sizeof(TreeNode));
+        NewTreeNodeFromTwoTrees(new_TreeNode, left, right);
+        tree->Nodes[tree->index] = new_TreeNode;
+        if (tree->index != 0)
+            siftUp(tree, tree->index);
+        tree->index++;
+    }
+    sleep(TIME_FOR_SLEEP);
+    printf("Tree built\n");
+    sleep(TIME_FOR_SLEEP);
+    return tree->Nodes[0];
+}
+
+void compression(FILE *input_file, char *input_file_name) {
+    printf("Calculating frequency\n");
+    long long int *frequencies = calloc(257, sizeof(long long int));
+    int unique_symbols_count = 0;
+    long long int all_symbols_count = 0;
+    unsigned char current_symbol;
+    while (fread(&current_symbol, sizeof(char), 1, input_file) != 0) {
+        if (frequencies[current_symbol] == 0)
+            unique_symbols_count++;
+        if (frequencies[current_symbol] <= SEYCHAS_RVANYOOOOOT)
+            frequencies[current_symbol]++;
+        all_symbols_count++;
+        if (current_symbol < 0 || current_symbol >= 257) {
+            int foo = 0;
+        }
+    }
+    sleep(TIME_FOR_SLEEP);
+    printf("Frequency calculated\n");
+    sleep(TIME_FOR_SLEEP);
+    printf("Building Huffman Tree\n");
+    TreeNode *root = build_Huffman_tree(frequencies, unique_symbols_count);
+    printf("Calculating symbols codes\n");
+    sleep(TIME_FOR_SLEEP);
+    coded_symbols = malloc(sizeof(codes_for_symbols));
+    coded_symbols->codes = calloc(sizeof(char *), 257);
+    coded_symbols->codes_lengths = calloc(sizeof(int), 257);
+    char *code = calloc(2, sizeof(char));
+    symbols_calculation(root, code, 0, 2);
+    printf("Symbols codes calculated\n");
+    sleep(TIME_FOR_SLEEP);
+    printf("Writing compressed information\n");
+    char *output_file_name = calloc(strlen(input_file_name) + 10, sizeof(char));
+    memcpy(output_file_name, input_file_name, sizeof(char) * strlen(input_file_name));
+    strcat(output_file_name, output_file_extension);
+    FILE *output_file = fopen(output_file_name, "wb");
+    rewind(input_file);
+    int current_bits_ct = 0;
+    unsigned char current_byte = 0;
+    while (fread(&current_symbol, sizeof(char), 1, input_file) != 0) {
+        for (int i = 0; i < coded_symbols->codes_lengths[current_symbol]; ++i) {
+            current_byte |= (((coded_symbols->codes[current_symbol][i / 8] >> (i % 8)) & 1) << current_bits_ct);
+            current_bits_ct++;
+            if (current_bits_ct == 8) {
+                fwrite(&current_byte, sizeof(char), 1, output_file);
+                current_byte = 0;
+                current_bits_ct = 0;
+            }
+        }
+    }
+    if (current_bits_ct != 0)
+        fwrite(&current_byte, sizeof(char), 1, output_file);
+    fwrite(key_initialiser, sizeof(char), 43, output_file);
+    for (int i = 0; i <= 256; ++i) {
+        if (coded_symbols->codes_lengths[i] != 0) {
+            //fwrite(symbol_initialiser, sizeof(char), 41, output_file);
+            current_symbol = (char) i;
+            fwrite(&current_symbol, sizeof(char), 1, output_file);
+            fwrite(&coded_symbols->codes_lengths[current_symbol], sizeof(int), 1, output_file);
+            fwrite(coded_symbols->codes[current_symbol], sizeof(char),
+                   coded_symbols->codes_lengths[current_symbol] / 8 + 1,
+                   output_file);
+        }
+    }
+    printf("Compressed information written\n");
+    sleep(TIME_FOR_SLEEP);
+}
+
+int main() {
+    char *input_file_name = calloc(1002, sizeof(char));
+    FILE *input_file;
+    file_opening:;
+    printf("Enter a file name: ");
+    scanf("%s", input_file_name);
+    input_file = fopen(input_file_name, "rb");
+    if (input_file == NULL) {
+        printf("No such file or directory found. Are you sure you specified file extension?\n");
+        goto file_opening;
+    }
+    printf("Such file exists.\n");
+    printf("Pick an option to compress or decompress the file (C / D): ");
+    char option;
+    option_choosing:;
+    scanf("%c", &option);
+    if (option == '\n')
+        scanf("%c", &option);
+    if (option == 'C') {
+        printf("Compressing\n");
+        compression(input_file, input_file_name);
+        printf("File compressed successfully\n");
+    } else if (option == 'D') {
+        printf("Decompressing\n");
+        compression(input_file, input_file_name);
+        printf("File Decompressed successfully\n");
+    } else {
+        printf("No such option, C - compress, D - decompress");
+        goto option_choosing;
+    }
+    printf("Codes for symbols:\n");
+    for (int i = 0; i <= 256; ++i) {
+        if (coded_symbols->codes_lengths[i] != 0) {
+            printf("%c %d %d ", i, i, coded_symbols->codes_lengths[i]);
+            for (int j = 0; j < coded_symbols->codes_lengths[i]; ++j) {
+                printf("%d", (coded_symbols->codes[i][j / 8] >> (j % 8)) & 1);
+            }
+            printf("\n");
+        }
+    }
+
+    return 0;
+}
