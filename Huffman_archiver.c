@@ -16,23 +16,25 @@ typedef struct codes_for_symbols {
 codes_for_symbols *coded_symbols;
 
 
-char key_initialiser[] = "kirindenle_CBO_ZOV_ZV_1488_SMARTPHONE_VIVO"; // 42 symbols
+static char key_initialiser[] = "kirindenle_CBO_ZOV_ZV_1488_SMARTPHONE_VIVO"; // 42 symbols
 
-char symbol_initialiser[] = "kirindenle_CBO_ZOV_ZV_69_SMARTPHONE_VIVO"; // 40 symbols
+static char symbol_initialiser[] = "kirindenle_CBO_ZOV_ZV_69_SMARTPHONE_VIVO"; // 40 symbols
 
-char output_file_extension[] = ".GOOOOOOL"; // 9 symbols
+static char output_file_extension[] = ".GOOOOOOL"; // 9 symbols
+
+static int is_successfully_decompressed;
 
 typedef union {
     char *bytes;
     int value;
 } number;
 
-void NewTreeNodeFromSymbol(TreeNode *initialisable, unsigned char symbol, long long int frequency, int index) {
+void NewTreeNodeFromSymbol(TreeNode *initialisable, unsigned char symbol, long long int frequency) {
     initialisable->frequency = frequency;
     if (frequency >= SEYCHAS_RVANYOOOOOT)
         initialisable->frequency = SEYCHAS_RVANYOOOOOT;
     initialisable->symbol = symbol;
-    initialisable->index = index;
+    initialisable->is_cymbol = 1;
     initialisable->left = NULL;
     initialisable->right = NULL;
 }
@@ -42,6 +44,7 @@ void NewTreeNodeFromTwoTrees(TreeNode *initialisable, TreeNode *left, TreeNode *
         initialisable->frequency = SEYCHAS_RVANYOOOOOT;
     else
         initialisable->frequency = left->frequency + right->frequency;
+    initialisable->is_cymbol = 0;
     initialisable->left = left;
     initialisable->right = right;
 }
@@ -52,15 +55,23 @@ void my_memcpy(char *dst, char *src, int number_of_bits) {
     }
 }
 
+int my_strcmp(char *str1, char *str2, int start, int len) {
+    for (int i = 0; i < len; ++i) {
+        if ((((str1[/*shift +*/ ((start + i) / 8)] >> ((start + i) % 8))) & 1) != (((str2[i / 8] >> (i % 8))) & 1))
+            return 1;
+    }
+    return 0;
+}
+
 void
-symbols_calculation(TreeNode *current_node, char *current_code, int current_code_index, int current_code_capacity) {
+symbols_coding(TreeNode *current_node, char *current_code, int current_code_index, int current_code_capacity) {
     if (current_node->left != NULL) {
         current_code[current_code_index / 8] |= (1 << (current_code_index % 8));
         if (current_code_index / 8 + 1 > current_code_capacity) {
             current_code_capacity *= 2;
             current_code = realloc(current_code, sizeof(char) * current_code_capacity);
         }
-        symbols_calculation(current_node->left, current_code, current_code_index + 1, current_code_capacity);
+        symbols_coding(current_node->left, current_code, current_code_index + 1, current_code_capacity);
     }
     if (current_node->right != NULL) {
         current_code[current_code_index / 8] &= (~(1 << (current_code_index % 8)));
@@ -68,13 +79,14 @@ symbols_calculation(TreeNode *current_node, char *current_code, int current_code
             current_code_capacity *= 2;
             current_code = realloc(current_code, sizeof(char) * current_code_capacity);
         }
-        symbols_calculation(current_node->right, current_code, current_code_index + 1, current_code_capacity);
+        symbols_coding(current_node->right, current_code, current_code_index + 1, current_code_capacity);
     }
-
-    coded_symbols->codes[current_node->symbol] = calloc(current_code_index,
-                                                        sizeof(char) * (current_code_index / 8 + 1));
-    my_memcpy(coded_symbols->codes[current_node->symbol], current_code, current_code_index);
-    coded_symbols->codes_lengths[current_node->symbol] = current_code_index;
+    if (current_node->is_cymbol == 1 && coded_symbols->codes_lengths[current_node->symbol] == 0) {
+        coded_symbols->codes[current_node->symbol] = calloc(current_code_index,
+                                                            sizeof(char) * (current_code_index / 8 + 1));
+        my_memcpy(coded_symbols->codes[current_node->symbol], current_code, current_code_index);
+        coded_symbols->codes_lengths[current_node->symbol] = current_code_index;
+    }
 
 }
 
@@ -85,7 +97,7 @@ TreeNode *build_Huffman_tree(long long int *frequencies, int unique_symbols_coun
     for (int i = 0; i <= 256; ++i) {
         if (frequencies[i] != 0) {
             tree->Nodes[tree->index] = malloc(sizeof(TreeNode));
-            NewTreeNodeFromSymbol(tree->Nodes[tree->index], (unsigned char) i, frequencies[i], i + 1);
+            NewTreeNodeFromSymbol(tree->Nodes[tree->index], (unsigned char) i, frequencies[i]);
             tree->index++;
         }
     }
@@ -106,8 +118,6 @@ TreeNode *build_Huffman_tree(long long int *frequencies, int unique_symbols_coun
             tree->Nodes[0] = temp;
             tree->index--;
             swapping(tree, 0, tree->index);
-        } else {
-            int foo = 0;
         }
         TreeNode *new_TreeNode = calloc(1, sizeof(TreeNode));
         NewTreeNodeFromTwoTrees(new_TreeNode, left, right);
@@ -134,23 +144,20 @@ void compression(FILE *input_file, char *input_file_name) {
         if (frequencies[current_symbol] <= SEYCHAS_RVANYOOOOOT)
             frequencies[current_symbol]++;
         all_symbols_count++;
-        if (current_symbol < 0 || current_symbol >= 257) {
-            int foo = 0;
-        }
     }
     sleep(TIME_FOR_SLEEP);
     printf("Frequency calculated\n");
     sleep(TIME_FOR_SLEEP);
     printf("Building Huffman Tree\n");
     TreeNode *root = build_Huffman_tree(frequencies, unique_symbols_count);
-    printf("Calculating symbols codes\n");
+    printf("Coding symbols\n");
     sleep(TIME_FOR_SLEEP);
     coded_symbols = malloc(sizeof(codes_for_symbols));
     coded_symbols->codes = calloc(sizeof(char *), 257);
     coded_symbols->codes_lengths = calloc(sizeof(int), 257);
-    char *code = calloc(2, sizeof(char));
-    symbols_calculation(root, code, 0, 2);
-    printf("Symbols codes calculated\n");
+    char *code = calloc(3, sizeof(char));
+    symbols_coding(root, code, 0, 2);
+    printf("Symbols coded\n");
     sleep(TIME_FOR_SLEEP);
     printf("Writing compressed information\n");
     char *output_file_name = calloc(strlen(input_file_name) + 10, sizeof(char));
@@ -189,6 +196,96 @@ void compression(FILE *input_file, char *input_file_name) {
     sleep(TIME_FOR_SLEEP);
 }
 
+void symbols_decoding(FILE *input_file) {
+    unsigned char current_symbol;
+    while (fread(&current_symbol, sizeof(char), 1, input_file) != 0) {
+        unsigned char decoding_symbol = current_symbol;
+        fread(&coded_symbols->codes_lengths[decoding_symbol], sizeof(int), 1, input_file);
+        coded_symbols->codes[decoding_symbol] = calloc(coded_symbols->codes_lengths[decoding_symbol] / 8 + 1,
+                                                       sizeof(char));
+        fread(coded_symbols->codes[decoding_symbol], sizeof(char),
+              coded_symbols->codes_lengths[decoding_symbol] / 8 + 1, input_file);
+    }
+}
+
+void decompression(FILE *input_file, char *input_file_name) {
+    printf("Searching for symbols key initialiser\n");
+    is_successfully_decompressed = 0;
+    int all_symbols_count = 0;
+    unsigned char current_symbol;
+    int key_found = 0;
+    while (fread(&current_symbol, sizeof(char), 1, input_file) != 0) {
+        if (current_symbol == 'k') {
+            char *key_initialiser_comparison = calloc(43, sizeof(char));
+            for (int i = 0; i < 42; ++i) {
+                key_initialiser_comparison[i] = current_symbol;
+                fread(&current_symbol, sizeof(char), 1, input_file);
+            }
+            key_initialiser_comparison[42] = '\0';
+            if (strcmp(key_initialiser, key_initialiser_comparison) == 0) {
+                key_found = 1;
+                break;
+            }
+        }
+        all_symbols_count++;
+    }
+    if (key_found == 0)
+        return;
+    sleep(TIME_FOR_SLEEP);
+    printf("Key initialiser found\n");
+    sleep(TIME_FOR_SLEEP);
+    printf("Decoding symbols\n");
+    coded_symbols = malloc(sizeof(codes_for_symbols));
+    coded_symbols->codes = calloc(sizeof(char *), 257);
+    coded_symbols->codes_lengths = calloc(sizeof(int), 257);
+    symbols_decoding(input_file);
+    printf("Symbols decoded\n");
+    sleep(TIME_FOR_SLEEP);
+    printf("Writing decompressed information\n");
+    char *output_file_name = calloc(strlen(input_file_name) - 10, sizeof(char));
+    memcpy(output_file_name, input_file_name, sizeof(char) * (strlen(input_file_name) - 8)); // try input_file_name + 10
+    output_file_name[strlen(input_file_name) - 9] = '\0';
+    FILE *output_file = fopen(output_file_name, "wb");
+    rewind(input_file);
+    char *current_code = calloc(3, sizeof(char));
+    int current_code_index = 0, current_code_capacity = 2, current_bit_index = 0, request_next = 0;
+    int current_symbols_count = 0;
+    while (current_symbols_count != all_symbols_count) {
+        if (fread(&current_symbol, sizeof(char), 1, input_file) == -1)
+            break;
+        current_symbols_count++;
+        current_code[current_code_index] = current_symbol;
+        current_code_index++;
+        if (current_code_index > current_code_capacity) {
+            current_code_capacity *= 2;
+            current_code = realloc(current_code, sizeof(char) * current_code_capacity);
+        }
+        symbols_searching:;
+        for (int i = 0; i <= 256; ++i) {
+            if (coded_symbols->codes_lengths[i] != 0) { // 10 - i, 01011 - r
+                int foo = 0;
+            }
+            if (coded_symbols->codes_lengths[i] != 0 &&
+                my_strcmp(current_code, coded_symbols->codes[i], current_bit_index, coded_symbols->codes_lengths[i]) ==
+                0) {
+                char writing_symbol = (char) i;
+                fwrite(&writing_symbol, sizeof(char), 1, output_file);
+                current_bit_index += coded_symbols->codes_lengths[i];
+                request_next += coded_symbols->codes_lengths[i];
+                if (request_next >= 8) {
+                    request_next = 0;
+                    break;
+                }
+                goto symbols_searching;
+            }
+        }
+    }
+    is_successfully_decompressed = 1;
+    printf("Decompressed information written\n");
+    sleep(TIME_FOR_SLEEP);
+
+}
+
 int main() {
     char *input_file_name = calloc(1002, sizeof(char));
     FILE *input_file;
@@ -201,9 +298,9 @@ int main() {
         goto file_opening;
     }
     printf("Such file exists.\n");
-    printf("Pick an option to compress or decompress the file (C / D): ");
     char option;
     option_choosing:;
+    printf("Pick an option to compress or decompress the file (C / D): ");
     scanf("%c", &option);
     if (option == '\n')
         scanf("%c", &option);
@@ -213,10 +310,14 @@ int main() {
         printf("File compressed successfully\n");
     } else if (option == 'D') {
         printf("Decompressing\n");
-        compression(input_file, input_file_name);
+        decompression(input_file, input_file_name);
+        if (is_successfully_decompressed == 0) {
+            printf("An error occured during decompression\n");
+            exit(666);
+        }
         printf("File Decompressed successfully\n");
     } else {
-        printf("No such option, C - compress, D - decompress");
+        printf("No such option, C - compress, D - decompress\n");
         goto option_choosing;
     }
     printf("Codes for symbols:\n");

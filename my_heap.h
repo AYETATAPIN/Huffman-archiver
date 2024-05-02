@@ -4,7 +4,7 @@
 typedef struct TreeNode {
     long long int frequency;
     unsigned char symbol;
-    int index;
+    int is_cymbol;
     struct TreeNode *left;
     struct TreeNode *right;
 } TreeNode;
@@ -17,5 +17,7 @@ typedef struct Heap {
 void swapping(Heap *heap, int index, int n);
 
 void siftUp(Heap *heap, int index);
+
+void pivition(char **arr, int left, int right);
 
 #endif
