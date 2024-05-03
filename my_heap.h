@@ -18,6 +18,4 @@ void swapping(Heap *heap, int index, int n);
 
 void siftUp(Heap *heap, int index);
 
-void pivition(char **arr, int left, int right);
-
 #endif
