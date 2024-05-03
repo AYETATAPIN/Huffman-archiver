@@ -98,8 +98,7 @@ symbols_coding(TreeNode *current_node, char *current_code, int current_code_inde
         symbols_coding(current_node->right, current_code, current_code_index + 1, current_code_capacity);
     }
     if (current_node->is_cymbol == 1 && coded_symbols->codes_lengths[current_node->symbol] == 0) {
-        coded_symbols->codes[current_node->symbol] = calloc(current_code_index,
-                                                            sizeof(char) * (current_code_index / 8 + 1));
+        coded_symbols->codes[current_node->symbol] = calloc(current_code_index, sizeof(char) * (current_code_index / 8 + 1));
         bitscpy(coded_symbols->codes[current_node->symbol], current_code, current_code_index);
         coded_symbols->codes_lengths[current_node->symbol] = current_code_index;
     }
@@ -173,6 +172,7 @@ void compression(FILE *input_file, char *input_file_name) {
     coded_symbols->codes_lengths = calloc(sizeof(int), 257);
     char *code = calloc(3, sizeof(char));
     symbols_coding(root, code, 0, 2);
+    free(root);
     printf("Symbols coded\n");
     sleep(TIME_FOR_SLEEP);
     printf("Writing compressed information\n");
@@ -203,16 +203,18 @@ void compression(FILE *input_file, char *input_file_name) {
     fwrite(key_initialiser, sizeof(char), 43, output_file);
     for (int i = 0; i <= 256; ++i) {
         if (coded_symbols->codes_lengths[i] != 0) {
-            //fwrite(symbol_initialiser, sizeof(char), 41, output_file);
             current_symbol = (char) i;
             fwrite(&current_symbol, sizeof(char), 1, output_file);
             fwrite(&coded_symbols->codes_lengths[current_symbol], sizeof(int), 1, output_file);
-            fwrite(coded_symbols->codes[current_symbol], sizeof(char),
-                   coded_symbols->codes_lengths[current_symbol] / 8 + 1,
-                   output_file);
+            fwrite(coded_symbols->codes[current_symbol], sizeof(char), coded_symbols->codes_lengths[current_symbol] / 8 + 1, output_file);
         }
     }
     printf("Compressed information written\n");
+    fclose(input_file);
+    fclose(output_file);
+    free(frequencies);
+    free(code);
+    free(output_file_name);
     sleep(TIME_FOR_SLEEP);
 }
 
@@ -225,10 +227,8 @@ void symbols_decoding(FILE *input_file, int key_initialiser_index) {
     while (fread(&current_symbol, sizeof(char), 1, input_file) != 0) {
         unsigned char decoding_symbol = current_symbol;
         fread(&coded_symbols->codes_lengths[decoding_symbol], sizeof(int), 1, input_file);
-        coded_symbols->codes[decoding_symbol] = calloc(coded_symbols->codes_lengths[decoding_symbol] / 8 + 1,
-                                                       sizeof(char));
-        fread(coded_symbols->codes[decoding_symbol], sizeof(char),
-              coded_symbols->codes_lengths[decoding_symbol] / 8 + 1, input_file);
+        coded_symbols->codes[decoding_symbol] = calloc(coded_symbols->codes_lengths[decoding_symbol] / 8 + 1, sizeof(char));
+        fread(coded_symbols->codes[decoding_symbol], sizeof(char), coded_symbols->codes_lengths[decoding_symbol] / 8 + 1, input_file);
     }
 }
 
@@ -258,9 +258,8 @@ void decompression(FILE *input_file, char *input_file_name) {
                 last_byte_index = i;
                 i += 48;
                 current_symbol = input_file_data[i];
-                //fread(&last_byte_length, sizeof(int), 1, input_file);
                 last_byte_length = input_file_data[i];
-                i+=4;
+                i += 4;
             } else if (key_initialiser_cmp(input_file_data, i) == 0) {
                 key_found = 1;
                 key_initialiser_index = i;
@@ -283,22 +282,20 @@ void decompression(FILE *input_file, char *input_file_name) {
     coded_symbols->codes_lengths = calloc(sizeof(int), 257);
     symbols_decoding(input_file, key_initialiser_index);
     printf("Symbols decoded\n");
+    fclose(input_file);
     sleep(TIME_FOR_SLEEP);
     printf("Writing decompressed information\n");
     char *output_file_name = calloc(strlen(input_file_name) - 10, sizeof(char));
-    memcpy(output_file_name, input_file_name, sizeof(char) * (strlen(input_file_name) - 8)); // try input_file_name + 10
+    memcpy(output_file_name, input_file_name, sizeof(char) * (strlen(input_file_name) - 8));
     output_file_name[strlen(input_file_name) - 9] = '\0';
     FILE *output_file = fopen(output_file_name, "wb");
-    while ((last_byte_index == -1 || current_bit_index / 8 + 1 <= last_byte_index) && (current_bit_index / 8 < key_initialiser_index)) { // y - 121 - 0100
+    while ((last_byte_index == -1 || current_bit_index / 8 + 1 <= last_byte_index) && (current_bit_index / 8 < key_initialiser_index)) {
         symbols_searching:;
         if (last_byte_index != -1 && current_bit_index >= last_byte_index * 8 + last_byte_length) {
-            break;
             current_bit_index += 1 * 48 * 8 + 8 * 4;
+            break;
         }
         for (int i = 0; i <= 256; ++i) {
-            if (coded_symbols->codes_lengths[i] != 0) { // 10 - i, 01011 - r
-                int foo = 0;
-            }
             if (coded_symbols->codes_lengths[i] != 0 && (last_byte_index == -1 || coded_symbols->codes_lengths[i] + current_bit_index <= last_byte_index * 8 + last_byte_length) && bitscmp(compressed_data, coded_symbols->codes[i], current_bit_index, coded_symbols->codes_lengths[i]) == 0) {
                 char writing_symbol = (char) i;
                 fwrite(&writing_symbol, sizeof(char), 1, output_file);
@@ -315,6 +312,9 @@ void decompression(FILE *input_file, char *input_file_name) {
     }
     is_successfully_decompressed = 1;
     printf("Decompressed information written\n");
+    free(input_file_data);
+    free(input_file_name);
+    free(compressed_data);
     sleep(TIME_FOR_SLEEP);
 
 }
@@ -353,16 +353,26 @@ int main() {
         printf("No such option, C - compress, D - decompress\n");
         goto option_choosing;
     }
-    printf("Codes for symbols:\n");
-    for (int i = 0; i <= 256; ++i) {
-        if (coded_symbols->codes_lengths[i] != 0) {
-            printf("%c %d %d ", i, i, coded_symbols->codes_lengths[i]);
-            for (int j = 0; j < coded_symbols->codes_lengths[i]; ++j) {
-                printf("%d", (coded_symbols->codes[i][j / 8] >> (j % 8)) & 1);
+    printf("Do you want to see codes for each symbol? (Y / N): ");
+    codes_showing:;
+    scanf("%c", &option);
+    if (option == 'Y') {
+        printf("Codes for symbols:\n");
+        for (int i = 0; i <= 256; ++i) {
+            if (coded_symbols->codes_lengths[i] != 0) {
+                printf("%c %d %d ", i, i, coded_symbols->codes_lengths[i]);
+                for (int j = 0; j < coded_symbols->codes_lengths[i]; ++j) {
+                    printf("%d", (coded_symbols->codes[i][j / 8] >> (j % 8)) & 1);
+                }
+                printf("\n");
             }
-            printf("\n");
         }
+    } else if (option != 'N')
+        goto codes_showing;
+    for (int i = 0; i <= 256; ++i) {
+        if (coded_symbols->codes[i] != NULL)
+            free(coded_symbols->codes[i]);
     }
-
+    printf("Thank you for using this archiver!");
     return 0;
 }
