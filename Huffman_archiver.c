@@ -79,8 +79,7 @@ int last_byte_keycmp(char *str, int start) {
     return 0;
 }
 
-void
-symbols_coding(TreeNode *current_node, char *current_code, int current_code_index, int current_code_capacity) {
+void symbols_coding(TreeNode *current_node, char *current_code, int current_code_index, int current_code_capacity) {
     if (current_node->left != NULL) {
         current_code[current_code_index / 8] |= (1 << (current_code_index % 8));
         if (current_code_index / 8 + 1 > current_code_capacity) {
