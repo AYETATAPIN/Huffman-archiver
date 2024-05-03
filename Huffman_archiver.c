@@ -269,7 +269,6 @@ void decompression(FILE *input_file, char *input_file_name) {
         compressed_data[compressed_data_ct] = input_file_data[i];
         compressed_data_ct++;
         current_symbol = input_file_data[i];
-
     }
     if (key_found == 0)
         return;
@@ -289,7 +288,7 @@ void decompression(FILE *input_file, char *input_file_name) {
     memcpy(output_file_name, input_file_name, sizeof(char) * (strlen(input_file_name) - 8));
     output_file_name[strlen(input_file_name) - 9] = '\0';
     FILE *output_file = fopen(output_file_name, "wb");
-    while ((last_byte_index == -1 || current_bit_index / 8 + 1 <= last_byte_index) && (current_bit_index / 8 < key_initialiser_index)) {
+    while ((last_byte_index == -1 || current_bit_index < last_byte_index * 8 + last_byte_length) && (current_bit_index / 8 < key_initialiser_index)) {
         symbols_searching:;
         if (last_byte_index != -1 && current_bit_index >= last_byte_index * 8 + last_byte_length) {
             current_bit_index += 1 * 48 * 8 + 8 * 4;
