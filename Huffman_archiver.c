@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "my_heap.c"
+#include "my_heap.h"
 
 #define TIME_FOR_SLEEP 1
 
@@ -22,7 +22,7 @@ static char last_byte_initialiser[] = "kirindenle_CBO_ZOV_ZV_09_11_2001_SMARTPHO
 
 static char output_file_extension[] = ".GOOOOOOL"; // 9 symbols
 
-static int is_successfully_decompressed;
+static int is_successfully_decompressed = -1;
 
 typedef union {
     char *bytes;
