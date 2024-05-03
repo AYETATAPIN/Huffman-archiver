@@ -345,7 +345,7 @@ int main() {
         decompression(input_file, input_file_name);
         if (is_successfully_decompressed == 0) {
             printf("An error occured during decompression\n");
-            exit(666);
+            goto end;
         }
         printf("File Decompressed successfully\n");
     } else {
@@ -374,5 +374,11 @@ int main() {
     }
     free(coded_symbols->codes_lengths);
     printf("Thank you for using this archiver!\n");
+    end:;
+    scanf("%c", &option);
+    while (scanf("%c", &option) == -1 && option == '\n') {
+    }
+    if (is_successfully_decompressed == 0)
+        exit(666);
     return 0;
 }
