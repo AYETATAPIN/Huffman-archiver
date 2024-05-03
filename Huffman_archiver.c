@@ -372,6 +372,6 @@ int main() {
         if (coded_symbols->codes[i] != NULL)
             free(coded_symbols->codes[i]);
     }
-    printf("Thank you for using this archiver!");
+    printf("Thank you for using this archiver!\n");
     return 0;
 }
