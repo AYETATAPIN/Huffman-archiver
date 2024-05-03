@@ -372,6 +372,7 @@ int main() {
         if (coded_symbols->codes[i] != NULL)
             free(coded_symbols->codes[i]);
     }
+    free(coded_symbols->codes_lengths);
     printf("Thank you for using this archiver!\n");
     return 0;
 }
