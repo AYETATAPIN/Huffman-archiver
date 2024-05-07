@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "my_heap.h"
+#include "my_heap.c"
 
 #define TIME_FOR_SLEEP 1
 
@@ -99,7 +99,7 @@ void symbols_coding(TreeNode *current_node, char *current_code, int current_code
     if (current_node->is_cymbol == 1 && coded_symbols->codes_lengths[current_node->symbol] == 0) {
         coded_symbols->codes[current_node->symbol] = calloc(current_code_index, sizeof(char) * (current_code_index / 8 + 1));
         bitscpy(coded_symbols->codes[current_node->symbol], current_code, current_code_index);
-        coded_symbols->codes_lengths[current_node->symbol] = current_code_index;
+        coded_symbols->codes_lengths[current_node->symbol] = current_code_index + 1;
     }
 
 }
@@ -345,7 +345,7 @@ int main() {
         printf("Decompressing\n");
         decompression(input_file, input_file_name);
         if (is_successfully_decompressed == 0) {
-            printf("An error occured during decompression\n");
+            printf("An error occurred during decompression\n");
             goto end;
         }
         printf("File Decompressed successfully\n");
