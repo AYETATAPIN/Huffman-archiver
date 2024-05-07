@@ -150,14 +150,14 @@ void compression(FILE *input_file, char *input_file_name) {
     printf("Calculating frequency\n");
     long long int *frequencies = calloc(257, sizeof(long long int));
     int unique_symbols_count = 0;
-    long long int all_symbols_count = 0;
+    long long int all_symbols_ct = 0;
     unsigned char current_symbol;
     while (fread(&current_symbol, sizeof(char), 1, input_file) != 0) {
         if (frequencies[current_symbol] == 0)
             unique_symbols_count++;
         if (frequencies[current_symbol] <= SEYCHAS_RVANYOOOOOT)
             frequencies[current_symbol]++;
-        all_symbols_count++;
+        all_symbols_ct++;
     }
     sleep(TIME_FOR_SLEEP);
     printf("Frequency calculated\n");
@@ -183,7 +183,6 @@ void compression(FILE *input_file, char *input_file_name) {
     int current_bits_ct = 0, current_symbols_ct = 0;
     unsigned char current_byte = 0;
     while (fread(&current_symbol, sizeof(char), 1, input_file) != 0) {
-        current_symbols_ct++;
         for (int i = 0; i < coded_symbols->codes_lengths[current_symbol]; ++i) {
             current_byte |= (((coded_symbols->codes[current_symbol][i / 8] >> (i % 8)) & 1) << current_bits_ct);
             current_bits_ct++;
@@ -191,6 +190,7 @@ void compression(FILE *input_file, char *input_file_name) {
                 fwrite(&current_byte, sizeof(char), 1, output_file);
                 current_byte = 0;
                 current_bits_ct = 0;
+                current_symbols_ct++;
             }
         }
     }
@@ -209,6 +209,8 @@ void compression(FILE *input_file, char *input_file_name) {
         }
     }
     printf("Compressed information written\n");
+    double compression_efficiency = (double) (((double) (1)) - ((double) ((double) current_symbols_ct / (double) all_symbols_ct))) * 100;
+    printf("Compression efficiency: %lf %%\n", compression_efficiency);
     fclose(input_file);
     fclose(output_file);
     free(frequencies);
