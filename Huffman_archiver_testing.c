@@ -206,8 +206,7 @@ void compression(FILE *input_file, char *input_file_name) {
             current_symbol = (char) i;
             fwrite(&current_symbol, sizeof(char), 1, output_file);
             fwrite(&coded_symbols->codes_lengths[current_symbol], sizeof(int), 1, output_file);
-            fwrite(coded_symbols->codes[current_symbol], sizeof(char),
-                   coded_symbols->codes_lengths[current_symbol] / 8 + 1, output_file);
+            fwrite(coded_symbols->codes[current_symbol], sizeof(char), coded_symbols->codes_lengths[current_symbol] / 8 + 1, output_file);
         }
     }
     printf("Compressed information written\n");
@@ -290,8 +289,10 @@ void decompression(FILE *input_file, char *input_file_name) {
     char *output_file_name = calloc(strlen(input_file_name) - 10, sizeof(char));
     memcpy(output_file_name, input_file_name, sizeof(char) * (strlen(input_file_name) - 8));
     output_file_name[strlen(input_file_name) - 9] = '\0';
-    FILE *output_file = fopen(output_file_name, "wb");
-    while ((last_byte_index == -1 || current_bit_index < last_byte_index * 8 + last_byte_length) && (current_bit_index / 8 < key_initialiser_index)) {
+    FILE *output_file = fopen(output_file_name, "rb");
+    char original_symbol;
+    while ((last_byte_index == -1 || current_bit_index < last_byte_index * 8 + last_byte_length) &&
+           (current_bit_index / 8 < key_initialiser_index)) {
         symbols_searching:;
         if (last_byte_index != -1 && current_bit_index >= last_byte_index * 8 + last_byte_length) {
             current_bit_index += 1 * 48 * 8 + 8 * 4;
@@ -300,7 +301,11 @@ void decompression(FILE *input_file, char *input_file_name) {
         for (int i = 0; i <= 256; ++i) {
             if (coded_symbols->codes_lengths[i] != 0 && (last_byte_index == -1 || coded_symbols->codes_lengths[i] + current_bit_index <= last_byte_index * 8 + last_byte_length) && bitscmp(compressed_data, coded_symbols->codes[i], current_bit_index, coded_symbols->codes_lengths[i]) == 0) {
                 char writing_symbol = (char) i;
-                fwrite(&writing_symbol, sizeof(char), 1, output_file);
+                fread(&original_symbol, sizeof(char), 1, output_file);
+                if (original_symbol != writing_symbol) {
+                    printf("ARCHIVATOR GOVNO!!!!!\n");
+                    exit(666);
+                }
                 current_bit_index += coded_symbols->codes_lengths[i];
                 request_next += coded_symbols->codes_lengths[i];
                 current_symbols_count++;
@@ -317,9 +322,10 @@ void decompression(FILE *input_file, char *input_file_name) {
     free(input_file_data);
     free(compressed_data);
     sleep(TIME_FOR_SLEEP);
+
 }
 
-void folder_handling(char *input_folder_name, char option) {
+void folder_handling(char *input_folder_name) {
     DIR *input_folder = opendir(input_folder_name);
     struct dirent *current_file_dirent;
     FILE *current_file;
@@ -332,39 +338,24 @@ void folder_handling(char *input_folder_name, char option) {
         memcpy(current_file_name, input_folder_name, sizeof(char) * (strlen(input_folder_name) + 1));
         strcat(current_file_name, "\\");
         strcat(current_file_name, current_file_dirent->d_name);
-        if (option == 'C') {
-            current_file = fopen(current_file_name, "rb");
-            if (current_file == NULL) {
-                printf("Embedded folder found, compressing\n");
-                folder_handling(current_file_name, option);
-                goto file_closing;
-            }
-            compression(current_file, current_file_name);
-            printf("File ""%s"" compressed\n", current_file_name);
-            fclose(current_file);
-            remove(current_file_name);
-        } else {
-            DIR *checking_dir;
-            for (int i = 0; i < strlen(current_file_name); ++i) {
-                if (strcmp(current_file_name + i, output_file_extension) == 0) {
-                    current_file = fopen(current_file_name, "rb");
-                    if (current_file == NULL) {
-                        printf("Embedded folder found, decompressing\n");
-                        folder_handling(current_file_name, option);
-                        goto file_closing;
-                    }
-                    decompression(current_file, current_file_name);
-                    printf("File ""%s"" decompressed\n", current_file_name);
-                    fclose(current_file);
-                    remove(current_file_name);
-                    break;
-                } else if ((checking_dir = opendir(current_file_name)) != NULL) {
-                    printf("Embedded folder found, decompressing\n");
-                    folder_handling(current_file_name, option);
-                    goto file_closing;
-                }
-            }
+        current_file = fopen(current_file_name, "rb");
+        if (current_file == NULL) {
+            printf("Embedded folder found, compressing\n");
+            folder_handling(current_file_name);
+            goto file_closing;
         }
+        compression(current_file, current_file_name);
+        printf("File ""%s"" compressed\n", current_file_name);
+        fclose(current_file);
+        printf("Testing for data equality\n");
+        strcat(current_file_name, ".GOOOOOOL");
+        FILE *compressed_file = fopen(current_file_name, "rb");
+        decompression(compressed_file, current_file_name);
+        printf("Data is equal\n");
+        remove(current_file_name);
+        fclose(compressed_file);
+        strcat(current_file_name, "_testing");
+        remove(current_file_name);
         file_closing:;
         if (current_file_name != NULL)
             free(current_file_name);
@@ -374,95 +365,21 @@ void folder_handling(char *input_folder_name, char option) {
 
 int main() {
     char *input_folder_name = calloc(1002, sizeof(char));
-    char option;
     DIR *input_folder;
-    printf("Enter a folder name. If you want to compress a single file, type ""F"": ");
+    printf("Enter a folder name for testing: ");
     folder_opening:;
     scanf("%s", input_folder_name);
-    if (strcmp(input_folder_name, "F") == 0)
-        goto file;
     if (NULL == (input_folder = opendir(input_folder_name))) {
         printf("No such directory found. Are you sure you provided absolute path?\n");
         goto folder_opening;
     }
     printf("Such folder exists.\n");
-    folder_option_choosing:;
-    printf("Pick an option to compress or decompress the files (C / D): ");
-    scanf("%c", &option);
-    if (option == '\n')
-        scanf("%c", &option);
-    if (option == 'C') {
-        printf("Compressing\n");
-    } else if (option == 'D') {
-        printf("Decompressing\n");
-    } else {
-        printf("No such option, C - compress, D - decompress\n");
-        goto folder_option_choosing;
-    }
     closedir(input_folder);
-    folder_handling(input_folder_name, option);
-    printf("Thank you for using this archiver!\n");
-    goto end;
-    file:;
-    char *input_file_name = calloc(1002, sizeof(char));
-    FILE *input_file;
-    file_opening:;
-    printf("Enter a file name: ");
-    scanf("%s", input_file_name);
-    input_file = fopen(input_file_name, "rb");
-    if (input_file == NULL) {
-        printf("No such file or directory found. Are you sure you specified file extension?\n");
-        goto file_opening;
-    }
-    printf("Such file exists.\n");
-    file_option_choosing:;
-    printf("Pick an option to compress or decompress the file (C / D): ");
-    scanf("%c", &option);
-    if (option == '\n')
-        scanf("%c", &option);
-    if (option == 'C') {
-        printf("Compressing\n");
-        compression(input_file, input_file_name);
-        printf("File compressed successfully\n");
-    } else if (option == 'D') {
-        printf("Decompressing\n");
-        decompression(input_file, input_file_name);
-        if (is_successfully_decompressed == 0) {
-            printf("An error occurred during decompression\n");
-            goto end;
-        }
-        printf("File Decompressed successfully\n");
-    } else {
-        printf("No such option, C - compress, D - decompress\n");
-        goto file_option_choosing;
-    }
-    printf("Do you want to see codes for each symbol? (Y / N): ");
-    codes_showing:;
-    scanf("%c", &option);
-    if (option == 'Y') {
-        printf("Codes for symbols:\n");
-        for (int i = 0; i <= 256; ++i) {
-            if (coded_symbols->codes_lengths[i] != 0) {
-                printf("%c %d %d ", i, i, coded_symbols->codes_lengths[i]);
-                for (int j = 0; j < coded_symbols->codes_lengths[i]; ++j) {
-                    printf("%d", (coded_symbols->codes[i][j / 8] >> (j % 8)) & 1);
-                }
-                printf("\n");
-            }
-        }
-    } else if (option != 'N')
-        goto codes_showing;
-    for (int i = 0; i <= 256; ++i) {
-        if (coded_symbols->codes[i] != NULL)
-            free(coded_symbols->codes[i]);
-    }
-    free(coded_symbols->codes_lengths);
-    printf("Thank you for using this archiver!\n");
-    end:;
+    folder_handling(input_folder_name);
+    printf("All tests has run successfully\n");
+    char option;
     scanf("%c", &option);
     while (scanf("%c", &option) == -1 && option == '\n') {
     }
-    if (is_successfully_decompressed == 0)
-        exit(666);
     return 0;
 }

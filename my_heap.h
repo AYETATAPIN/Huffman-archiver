@@ -4,7 +4,7 @@
 typedef struct TreeNode {
     long long int frequency;
     unsigned char symbol;
-    int is_cymbol;
+    int is_symbol;
     struct TreeNode *left;
     struct TreeNode *right;
 } TreeNode;
