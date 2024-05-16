@@ -376,7 +376,7 @@ int main() {
     char *input_folder_name = calloc(1002, sizeof(char));
     char option;
     DIR *input_folder;
-    printf("Enter a folder name. If you want to compress a single file, type ""F"": ");
+    printf("Enter a folder name. If you want to change a single file, type ""F"": ");
     folder_opening:;
     scanf("%s", input_folder_name);
     if (strcmp(input_folder_name, "F") == 0)
