@@ -1,7 +1,7 @@
 #ifndef NSU_PTU_MY_TREE_H
 #define NSU_PTU_MY_TREE_H
 
-#include "my_heap.h"
+#include "my_heap.c"
 #include <stdlib.h>
 #include <unistd.h>
 

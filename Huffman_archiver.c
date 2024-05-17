@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
-#include "my_heap.c"
 #include "folder_handling.c"
 
 #define TIME_FOR_SLEEP 1
