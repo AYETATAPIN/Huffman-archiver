@@ -6,4 +6,4 @@
 
 ## Compressed files have a `.GOOOOOOL` extension
 
-### If you want to be sure that archiver is working correctly, launch `archivator_testing.exe` or run `Huffman_archiver_testing.c` to make sure compressed and decompressed data would be equal
+### If you want to make sure that archiver is working correctly, launch `archivator_testing.exe` or run `Huffman_archiver_testing.c` to make sure compressed and decompressed data would be equal
