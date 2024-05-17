@@ -16,14 +16,7 @@ typedef struct codes_for_symbols {
 
 codes_for_symbols *coded_symbols;
 
-
-static char key_initialiser[] = "kirindenle_CBO_ZOV_ZV_1488_SMARTPHONE_VIVO"; // 42 symbols
-
-static char last_byte_initialiser[] = "kirindenle_CBO_ZOV_ZV_09_11_2001_SMARTPHONE_VIVO"; // 48 symbols
-
 static char output_file_extension[] = ".GOOOOOOL"; // 9 symbols
-
-static int is_successfully_decompressed = -1;
 
 typedef union {
     char *bytes;
@@ -59,22 +52,6 @@ void bitscpy(char *dst, char *src, int number_of_bits) {
 int bitscmp(char *str1, char *str2, int start, int len) {
     for (int i = 0; i < len; ++i) {
         if ((((str1[/*shift +*/ ((start + i) / 8)] >> ((start + i) % 8))) & 1) != (((str2[i / 8] >> (i % 8))) & 1))
-            return 1;
-    }
-    return 0;
-}
-
-int key_initialiser_cmp(char *str, int start) {
-    for (int i = 0; i < 42; ++i) {
-        if (str[start + i] != key_initialiser[i])
-            return 1;
-    }
-    return 0;
-}
-
-int last_byte_keycmp(char *str, int start) {
-    for (int i = 0; i < 48; ++i) {
-        if (str[start + i] != last_byte_initialiser[i])
             return 1;
     }
     return 0;
@@ -182,6 +159,9 @@ void compression(FILE *input_file, char *input_file_name) {
     FILE *output_file = fopen(output_file_name, "wb");
     rewind(input_file);
     int current_bits_ct = 0, current_symbols_ct = 0;
+    int last_byte_index = 0, last_byte_length = 0;
+    fwrite(&last_byte_index, sizeof(int), 1, output_file);
+    fwrite(&last_byte_length, sizeof(int), 1, output_file);
     unsigned char current_byte = 0;
     while (fread(&current_symbol, sizeof(char), 1, input_file) != 0) {
         for (int i = 0; i < coded_symbols->codes_lengths[current_symbol]; ++i) {
@@ -192,24 +172,24 @@ void compression(FILE *input_file, char *input_file_name) {
                 current_byte = 0;
                 current_bits_ct = 0;
                 current_symbols_ct++;
+                last_byte_index++;
             }
         }
     }
-    if (current_bits_ct != 0) {
-        fwrite(last_byte_initialiser, sizeof(char), 48, output_file);
-        fwrite(&current_bits_ct, sizeof(int), 1, output_file);
+    last_byte_length = current_bits_ct;
+    if (current_bits_ct != 0)
         fwrite(&current_byte, sizeof(char), 1, output_file);
-    }
-    fwrite(key_initialiser, sizeof(char), 43, output_file);
     for (int i = 0; i <= 256; ++i) {
         if (coded_symbols->codes_lengths[i] != 0) {
             current_symbol = (char) i;
             fwrite(&current_symbol, sizeof(char), 1, output_file);
             fwrite(&coded_symbols->codes_lengths[current_symbol], sizeof(int), 1, output_file);
-            fwrite(coded_symbols->codes[current_symbol], sizeof(char),
-                   coded_symbols->codes_lengths[current_symbol] / 8 + 1, output_file);
+            fwrite(coded_symbols->codes[current_symbol], sizeof(char), coded_symbols->codes_lengths[current_symbol] / 8 + 1, output_file);
         }
     }
+    rewind(output_file);
+    fwrite(&last_byte_index, sizeof(int), 1, output_file);
+    fwrite(&last_byte_length, sizeof(int), 1, output_file);
     printf("Compressed information written\n");
     double compression_efficiency = (double) (((double) (1)) - ((double) ((double) current_symbols_ct / (double) all_symbols_ct))) * 100;
     printf("Compression efficiency: %lf %%\n", compression_efficiency);
@@ -221,12 +201,8 @@ void compression(FILE *input_file, char *input_file_name) {
     sleep(TIME_FOR_SLEEP);
 }
 
-void symbols_decoding(FILE *input_file, int key_initialiser_index) {
-    rewind(input_file);
+void symbols_decoding(FILE *input_file) {
     unsigned char current_symbol;
-    for (int i = 0; i <= key_initialiser_index + 42; ++i) {
-        fread(&current_symbol, sizeof(char), 1, input_file);
-    }
     while (fread(&current_symbol, sizeof(char), 1, input_file) != 0) {
         unsigned char decoding_symbol = current_symbol;
         fread(&coded_symbols->codes_lengths[decoding_symbol], sizeof(int), 1, input_file);
@@ -236,15 +212,16 @@ void symbols_decoding(FILE *input_file, int key_initialiser_index) {
 }
 
 void decompression(FILE *input_file, char *input_file_name) {
-    printf("Searching for symbols key initialiser\n");
-    is_successfully_decompressed = 0;
     unsigned char current_symbol;
-    int key_found = 0;
     char *input_file_data = calloc(4, sizeof(char));
     input_file_data[3] = '\0';
     int all_symbols_ct = 0, current_code_capacity = 2, current_bit_index = 0, request_next = 0;
     int current_symbols_count = 0;
-    while (fread(&current_symbol, sizeof(char), 1, input_file) != 0) {
+    int last_byte_index, last_byte_length;
+    fread(&last_byte_index, sizeof(int), 1, input_file);
+    fread(&last_byte_length, sizeof(int), 1, input_file);
+    while (all_symbols_ct <= last_byte_index) {
+        fread(&current_symbol, sizeof(char), 1, input_file);
         input_file_data[all_symbols_ct] = current_symbol;
         all_symbols_ct++;
         if (all_symbols_ct >= current_code_capacity) {
@@ -252,37 +229,12 @@ void decompression(FILE *input_file, char *input_file_name) {
             input_file_data = realloc(input_file_data, sizeof(char) * current_code_capacity);
         }
     }
-    int last_byte_length = -1, last_byte_index = -1, key_initialiser_index = -1;
-    char *compressed_data = calloc(all_symbols_ct, sizeof(char));
-    int compressed_data_ct = 0;
-    for (int i = 0; i < all_symbols_ct; ++i) {
-        if (input_file_data[i] == 'k') {
-            if (last_byte_keycmp(input_file_data, i) == 0) {
-                last_byte_index = i;
-                i += 48;
-                current_symbol = input_file_data[i];
-                last_byte_length = input_file_data[i];
-                i += 4;
-            } else if (key_initialiser_cmp(input_file_data, i) == 0) {
-                key_found = 1;
-                key_initialiser_index = i;
-                break;
-            }
-        }
-        compressed_data[compressed_data_ct] = input_file_data[i];
-        compressed_data_ct++;
-        current_symbol = input_file_data[i];
-    }
-    if (key_found == 0)
-        return;
-    sleep(TIME_FOR_SLEEP);
-    printf("Key initialiser found\n");
     sleep(TIME_FOR_SLEEP);
     printf("Decoding symbols\n");
     coded_symbols = malloc(sizeof(codes_for_symbols));
     coded_symbols->codes = calloc(sizeof(char *), 257);
     coded_symbols->codes_lengths = calloc(sizeof(int), 257);
-    symbols_decoding(input_file, key_initialiser_index);
+    symbols_decoding(input_file);
     printf("Symbols decoded\n");
     fclose(input_file);
     sleep(TIME_FOR_SLEEP);
@@ -291,14 +243,15 @@ void decompression(FILE *input_file, char *input_file_name) {
     memcpy(output_file_name, input_file_name, sizeof(char) * (strlen(input_file_name) - 8));
     output_file_name[strlen(input_file_name) - 9] = '\0';
     FILE *output_file = fopen(output_file_name, "wb");
-    while ((last_byte_index == -1 || current_bit_index < last_byte_index * 8 + last_byte_length) && (current_bit_index / 8 < key_initialiser_index)) {
+    while ((last_byte_index == -1 || current_bit_index <= last_byte_index * 8 + last_byte_length)) {
         symbols_searching:;
         if (last_byte_index != -1 && current_bit_index >= last_byte_index * 8 + last_byte_length) {
             current_bit_index += 1 * 48 * 8 + 8 * 4;
             break;
         }
         for (int i = 0; i <= 256; ++i) {
-            if (coded_symbols->codes_lengths[i] != 0 && (last_byte_index == -1 || coded_symbols->codes_lengths[i] + current_bit_index <= last_byte_index * 8 + last_byte_length) && bitscmp(compressed_data, coded_symbols->codes[i], current_bit_index, coded_symbols->codes_lengths[i]) == 0) {
+            if (coded_symbols->codes_lengths[i] != 0 &&
+                bitscmp(input_file_data, coded_symbols->codes[i], current_bit_index, coded_symbols->codes_lengths[i]) == 0) {
                 char writing_symbol = (char) i;
                 fwrite(&writing_symbol, sizeof(char), 1, output_file);
                 current_bit_index += coded_symbols->codes_lengths[i];
@@ -312,10 +265,8 @@ void decompression(FILE *input_file, char *input_file_name) {
             }
         }
     }
-    is_successfully_decompressed = 1;
     printf("Decompressed information written\n");
     free(input_file_data);
-    free(compressed_data);
     sleep(TIME_FOR_SLEEP);
 }
 
@@ -427,10 +378,6 @@ int main() {
     } else if (option == 'D') {
         printf("Decompressing\n");
         decompression(input_file, input_file_name);
-        if (is_successfully_decompressed == 0) {
-            printf("An error occurred during decompression\n");
-            goto end;
-        }
         printf("File Decompressed successfully\n");
     } else {
         printf("No such option, C - compress, D - decompress\n");
@@ -462,7 +409,5 @@ int main() {
     scanf("%c", &option);
     while (scanf("%c", &option) == -1 && option == '\n') {
     }
-    if (is_successfully_decompressed == 0)
-        exit(666);
     return 0;
 }
