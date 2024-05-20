@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include "my_heap.c"
 
-#define TIME_FOR_SLEEP 1
+#define TIME_FOR_SLEEP 0
 
 #define SEYCHAS_RVANYOOOOOT 9000000000000000000
 
@@ -17,11 +17,6 @@ typedef struct codes_for_symbols {
 codes_for_symbols *coded_symbols;
 
 static char output_file_extension[] = ".GOOOOOOL"; // 9 symbols
-
-typedef union {
-    char *bytes;
-    int value;
-} number;
 
 void NewTreeNodeFromSymbol(TreeNode *initialisable, unsigned char symbol, long long int frequency) {
     initialisable->frequency = frequency;
@@ -79,7 +74,14 @@ void symbols_coding(TreeNode *current_node, char *current_code, int current_code
         bitscpy(coded_symbols->codes[current_node->symbol], current_code, current_code_index);
         coded_symbols->codes_lengths[current_node->symbol] = current_code_index + 1;
     }
+}
 
+void tree_destructor(TreeNode *current_node) {
+    if (current_node->left != NULL)
+        tree_destructor(current_node->left);
+    if (current_node->right != NULL)
+        tree_destructor(current_node->right);
+    free(current_node);
 }
 
 TreeNode *build_Huffman_tree(long long int *frequencies, int unique_symbols_count) {
@@ -149,7 +151,7 @@ void compression(FILE *input_file, char *input_file_name) {
     coded_symbols->codes_lengths = calloc(sizeof(int), 257);
     char *code = calloc(3, sizeof(char));
     symbols_coding(root, code, 0, 2);
-    free(root);
+    tree_destructor(root);
     printf("Symbols coded\n");
     sleep(TIME_FOR_SLEEP);
     printf("Writing compressed information\n");
@@ -179,12 +181,18 @@ void compression(FILE *input_file, char *input_file_name) {
     last_byte_length = current_bits_ct;
     if (current_bits_ct != 0)
         fwrite(&current_byte, sizeof(char), 1, output_file);
+    printf("Codes for symbols:\n");
     for (int i = 0; i <= 256; ++i) {
         if (coded_symbols->codes_lengths[i] != 0) {
             current_symbol = (char) i;
             fwrite(&current_symbol, sizeof(char), 1, output_file);
             fwrite(&coded_symbols->codes_lengths[current_symbol], sizeof(int), 1, output_file);
             fwrite(coded_symbols->codes[current_symbol], sizeof(char), coded_symbols->codes_lengths[current_symbol] / 8 + 1, output_file);
+            printf("%c %d %d ", i, i, coded_symbols->codes_lengths[i]);
+            for (int j = 0; j < coded_symbols->codes_lengths[i]; ++j) {
+                printf("%d", (coded_symbols->codes[i][j / 8] >> (j % 8)) & 1);
+            }
+            printf("\n");
         }
     }
     rewind(output_file);
@@ -198,6 +206,12 @@ void compression(FILE *input_file, char *input_file_name) {
     free(frequencies);
     free(code);
     free(output_file_name);
+    for (int i = 0; i <= 256; ++i) {
+        if (coded_symbols->codes[i] != NULL)
+            free(coded_symbols->codes[i]);
+    }
+    free(coded_symbols->codes_lengths);
+    free(coded_symbols);
     sleep(TIME_FOR_SLEEP);
 }
 
@@ -221,7 +235,7 @@ void decompression(FILE *input_file, char *input_file_name) {
     int last_byte_index, last_byte_length;
     fread(&last_byte_index, sizeof(int), 1, input_file);
     fread(&last_byte_length, sizeof(int), 1, input_file);
-    while (all_symbols_ct <= last_byte_index) {
+    while (all_symbols_ct * 8 < last_byte_index * 8 + last_byte_length) {
         fread(&current_symbol, sizeof(char), 1, input_file);
         input_file_data[all_symbols_ct] = current_symbol;
         all_symbols_ct++;
@@ -252,8 +266,7 @@ void decompression(FILE *input_file, char *input_file_name) {
             break;
         }
         for (int i = 0; i <= 256; ++i) {
-            if (coded_symbols->codes_lengths[i] != 0 &&
-                bitscmp(input_file_data, coded_symbols->codes[i], current_bit_index, coded_symbols->codes_lengths[i]) == 0) {
+            if (coded_symbols->codes_lengths[i] != 0 && bitscmp(input_file_data, coded_symbols->codes[i], current_bit_index, coded_symbols->codes_lengths[i]) == 0) {
                 char writing_symbol = (char) i;
                 fread(&original_symbol, sizeof(char), 1, output_file);
                 if (original_symbol != writing_symbol) {
@@ -273,6 +286,13 @@ void decompression(FILE *input_file, char *input_file_name) {
     }
     printf("Decompressed information written\n");
     free(input_file_data);
+    free(output_file_name);
+    for (int i = 0; i <= 256; ++i) {
+        if (coded_symbols->codes[i] != NULL)
+            free(coded_symbols->codes[i]);
+    }
+    free(coded_symbols->codes_lengths);
+    free(coded_symbols);
     sleep(TIME_FOR_SLEEP);
 
 }
@@ -309,9 +329,6 @@ void folder_handling(char *input_folder_name) {
         strcat(current_file_name, "_testing");
         remove(current_file_name);
         file_closing:;
-        if (current_file_name != NULL)
-            free(current_file_name);
-        current_file_name = NULL;
     }
 }
 

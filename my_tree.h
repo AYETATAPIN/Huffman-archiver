@@ -15,4 +15,6 @@ void NewTreeNodeFromTwoTrees(TreeNode *initialisable, TreeNode *left, TreeNode *
 
 TreeNode *build_Huffman_tree(long long int *frequencies, int unique_symbols_count);
 
+void tree_destructor(TreeNode *current_node);
+
 #endif

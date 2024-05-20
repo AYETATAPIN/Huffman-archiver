@@ -59,3 +59,11 @@ TreeNode *build_Huffman_tree(long long int *frequencies, int unique_symbols_coun
     }
     return tree->Nodes[0];
 }
+
+void tree_destructor(TreeNode *current_node) {
+    if (current_node->left != NULL)
+        tree_destructor(current_node->left);
+    if (current_node->right != NULL)
+        tree_destructor(current_node->right);
+    free(current_node);
+}

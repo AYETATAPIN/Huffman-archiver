@@ -47,8 +47,5 @@ void folder_handling(char *input_folder_name, char option) {
             }
         }
         file_closing:;
-        if (current_file_name != NULL)
-            free(current_file_name);
-        current_file_name = NULL;
     }
 }

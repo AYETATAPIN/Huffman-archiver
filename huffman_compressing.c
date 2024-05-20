@@ -26,7 +26,7 @@ void compression(FILE *input_file, char *input_file_name) {
     coded_symbols->codes_lengths = calloc(sizeof(int), 257);
     char *code = calloc(3, sizeof(char));
     symbols_coding(root, code, 0, 2);
-    free(root);
+    tree_destructor(root);
     printf("Symbols coded\n");
     sleep(TIME_FOR_SLEEP);
     printf("Writing compressed information\n");
@@ -80,5 +80,6 @@ void compression(FILE *input_file, char *input_file_name) {
             free(coded_symbols->codes[i]);
     }
     free(coded_symbols->codes_lengths);
+    free(coded_symbols);
     sleep(TIME_FOR_SLEEP);
 }

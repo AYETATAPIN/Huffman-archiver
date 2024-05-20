@@ -40,8 +40,7 @@ void decompression(FILE *input_file, char *input_file_name) {
             break;
         }
         for (int i = 0; i <= 256; ++i) {
-            if (coded_symbols->codes_lengths[i] != 0 &&
-                bitscmp(input_file_data, coded_symbols->codes[i], current_bit_index, coded_symbols->codes_lengths[i]) == 0) {
+            if (coded_symbols->codes_lengths[i] != 0 && bitscmp(input_file_data, coded_symbols->codes[i], current_bit_index, coded_symbols->codes_lengths[i]) == 0) {
                 char writing_symbol = (char) i;
                 fwrite(&writing_symbol, sizeof(char), 1, output_file);
                 current_bit_index += coded_symbols->codes_lengths[i];
@@ -57,10 +56,12 @@ void decompression(FILE *input_file, char *input_file_name) {
     }
     printf("Decompressed information written\n");
     free(input_file_data);
+    free(output_file_name);
     for (int i = 0; i <= 256; ++i) {
         if (coded_symbols->codes[i] != NULL)
             free(coded_symbols->codes[i]);
     }
     free(coded_symbols->codes_lengths);
+    free(coded_symbols);
     sleep(TIME_FOR_SLEEP);
 }
