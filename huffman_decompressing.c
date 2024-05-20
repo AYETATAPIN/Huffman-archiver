@@ -10,7 +10,7 @@ void decompression(FILE *input_file, char *input_file_name) {
     int last_byte_index, last_byte_length;
     fread(&last_byte_index, sizeof(int), 1, input_file);
     fread(&last_byte_length, sizeof(int), 1, input_file);
-    while (all_symbols_ct <= last_byte_index) {
+    while (all_symbols_ct * 8 < last_byte_index * 8 + last_byte_length) {
         fread(&current_symbol, sizeof(char), 1, input_file);
         input_file_data[all_symbols_ct] = current_symbol;
         all_symbols_ct++;
